@@ -67,6 +67,7 @@ Singleton {
 
         if (o.decoration.blur.enable) {
             kdl += "blur {\n"
+            kdl += "    on\n" // niri keeps blur off unless this node is present
             kdl += `    passes ${o.decoration.blur.passes}\n`
             kdl += `    offset ${o.decoration.blur.offset}\n`
             kdl += `    noise ${o.decoration.blur.noise}\n`
