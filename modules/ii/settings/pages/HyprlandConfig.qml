@@ -194,6 +194,15 @@ ContentPage {
                         }
                     }
                 }
+
+                NoticeBox {
+                    Layout.fillWidth: true
+                    visible: {
+                        const s = monitorConfig.monitors[monitorCanvas.selectedIndex]?.scale ?? 1.0
+                        return Math.abs(s - Math.round(s)) > 0.001
+                    }
+                    text: Translation.tr("On a fractional scale, apps that don't support wp_fractional_scale_v1 (XWayland, GTK3, some Electron builds) are drawn at a whole scale and resized by the compositor, so they come out softer. Whole scales like 100% or 200% are unaffected.")
+                }
             }
 
             ContentSubsection {
