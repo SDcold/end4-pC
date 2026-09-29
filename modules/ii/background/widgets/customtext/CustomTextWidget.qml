@@ -24,6 +24,13 @@ AbstractBackgroundWidget {
     property real fontSize: root.configEntry.fontSize
     property bool editing: false
 
+    // Wallpaper blur poured into the glyphs, like the clocks do. Off while
+    // editing: the mask hides the real editor, so the caret and the selection
+    // would be invisible.
+    readonly property bool blurText: Config.options.background.widgets.blurWidgets
+        && root.wallpaperItem !== null && !root.editing
+    readonly property bool dropShadow: root.configEntry.shadow && Config.options.background.widgets.shadow
+
     readonly property color textColor: root.configEntry.color === "" ? root.colText : Appearance.getColorFromName(root.configEntry.color)
 
     implicitWidth: Math.max(editor.implicitWidth, editor.length === 0 ? placeholder.implicitWidth : 0) + root.padding * 2
@@ -78,39 +85,73 @@ AbstractBackgroundWidget {
         root.fontSize = Qt.binding(() => root.configEntry.fontSize);
     }
 
-    TextEdit {
-        id: editor
-        anchors.centerIn: parent
-        enabled: root.editing
-        text: root.configEntry.content
-        textFormat: TextEdit.PlainText
-        selectByMouse: true
-        color: root.textColor
-        selectionColor: Appearance.colors.colPrimary
-        selectedTextColor: Appearance.colors.colOnPrimary
-        horizontalAlignment: ({ left: TextEdit.AlignLeft, right: TextEdit.AlignRight })[root.configEntry.alignment] ?? TextEdit.AlignHCenter
-        font {
-            family: root.configEntry.fontFamily
-            pixelSize: root.fontSize
-        }
+    Item {
+        id: textStage
+        anchors.fill: parent
+        visible: !root.blurText
 
-        layer.enabled: root.configEntry.shadow
+        TextEdit {
+            id: editor
+            anchors.centerIn: parent
+            enabled: root.editing
+            text: root.configEntry.content
+            textFormat: TextEdit.PlainText
+            selectByMouse: true
+            color: root.textColor
+            selectionColor: Appearance.colors.colPrimary
+            selectedTextColor: Appearance.colors.colOnPrimary
+            horizontalAlignment: ({ left: TextEdit.AlignLeft, right: TextEdit.AlignRight })[root.configEntry.alignment] ?? TextEdit.AlignHCenter
+            font {
+                family: root.configEntry.fontFamily
+                pixelSize: root.fontSize
+            }
+
+            layer.enabled: root.dropShadow && !root.blurText
+            layer.effect: DropShadow {
+                radius: 8
+                samples: radius * 2 + 1
+                verticalOffset: 2
+                color: Appearance.colors.colShadow
+                transparentBorder: true
+            }
+
+            Keys.onEscapePressed: root.finishEditing(false)
+            Keys.onReturnPressed: (event) => {
+                if (event.modifiers & Qt.ControlModifier) root.finishEditing(true);
+                else event.accepted = false;
+            }
+            Keys.onEnterPressed: (event) => {
+                if (event.modifiers & Qt.ControlModifier) root.finishEditing(true);
+                else event.accepted = false;
+            }
+        }
+    }
+
+    FastBlurred {
+        id: textBlur
+        anchors.fill: parent
+        blurSource: root.wallpaperItem
+        cardRadius: 0
+        tint: root.textColor
+        tintOpacity: 0.35
+        trackX: root.x
+        trackY: root.y
+        visible: false
+    }
+
+    OpacityMask {
+        anchors.fill: parent
+        source: textBlur
+        maskSource: textStage
+        visible: root.blurText
+
+        layer.enabled: root.dropShadow
         layer.effect: DropShadow {
             radius: 8
             samples: radius * 2 + 1
             verticalOffset: 2
             color: Appearance.colors.colShadow
             transparentBorder: true
-        }
-
-        Keys.onEscapePressed: root.finishEditing(false)
-        Keys.onReturnPressed: (event) => {
-            if (event.modifiers & Qt.ControlModifier) root.finishEditing(true);
-            else event.accepted = false;
-        }
-        Keys.onEnterPressed: (event) => {
-            if (event.modifiers & Qt.ControlModifier) root.finishEditing(true);
-            else event.accepted = false;
         }
     }
 
