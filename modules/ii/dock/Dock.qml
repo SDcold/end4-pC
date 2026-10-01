@@ -136,23 +136,55 @@ Scope {
 
                         // The concave corners that tie the dock to the screen edge, the
                         // same pieces the bar uses for its own hug styles.
+                        // Anchors are swapped through states rather than ternaries: an
+                        // anchor set back to undefined is not reliably dropped, so the
+                        // fillet kept its old edge after a position change. Same pattern
+                        // the bar uses for its own corners.
                         RoundCorner {
+                            id: leftFillet
                             visible: root.isHug && Config.options.dock.showBackground
-                            anchors.top:    root.isTop ? dockVisualBackground.top : undefined
-                            anchors.bottom: root.isTop ? undefined : dockVisualBackground.bottom
                             x: -implicitSize
                             implicitSize: Appearance.rounding.screenRounding
                             color: Appearance.colors.colLayer0
-                            corner: root.isTop ? RoundCorner.CornerEnum.TopRight : RoundCorner.CornerEnum.BottomRight
+                            corner: RoundCorner.CornerEnum.BottomRight
+
+                            anchors.bottom: dockVisualBackground.bottom
+                            states: State {
+                                name: "top"
+                                when: root.isTop
+                                AnchorChanges {
+                                    target: leftFillet
+                                    anchors.bottom: undefined
+                                    anchors.top: dockVisualBackground.top
+                                }
+                                PropertyChanges {
+                                    target: leftFillet
+                                    corner: RoundCorner.CornerEnum.TopRight
+                                }
+                            }
                         }
                         RoundCorner {
+                            id: rightFillet
                             visible: root.isHug && Config.options.dock.showBackground
-                            anchors.top:    root.isTop ? dockVisualBackground.top : undefined
-                            anchors.bottom: root.isTop ? undefined : dockVisualBackground.bottom
                             x: dockVisualBackground.width
                             implicitSize: Appearance.rounding.screenRounding
                             color: Appearance.colors.colLayer0
-                            corner: root.isTop ? RoundCorner.CornerEnum.TopLeft : RoundCorner.CornerEnum.BottomLeft
+                            corner: RoundCorner.CornerEnum.BottomLeft
+
+                            anchors.bottom: dockVisualBackground.bottom
+                            states: State {
+                                name: "top"
+                                when: root.isTop
+                                AnchorChanges {
+                                    target: rightFillet
+                                    anchors.bottom: undefined
+                                    anchors.top: dockVisualBackground.top
+                                }
+                                PropertyChanges {
+                                    target: rightFillet
+                                    corner: RoundCorner.CornerEnum.TopLeft
+                                }
+                            }
                         }
 
                         RowLayout {
