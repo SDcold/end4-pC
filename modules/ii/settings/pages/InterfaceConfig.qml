@@ -651,6 +651,19 @@ ContentPage {
                         {displayName: Translation.tr("Hug"), value: "hug"},
                     ]
                 }
+                ConfigComboBox {
+                    Layout.fillWidth: true
+                    buttonIcon: "align_vertical_bottom"
+                    text: Translation.tr("Position")
+                    textRole: "displayName"
+                    fieldWidth: 160
+                    currentValue: Config.options.dock.position
+                    onSelected: newValue => { Config.options.dock.position = newValue }
+                    model: [
+                        {displayName: Translation.tr("Bottom"), value: "bottom"},
+                        {displayName: Translation.tr("Top"), value: "top"},
+                    ]
+                }
                 ConfigSwitch {
                     buttonIcon: "highlight_mouse_cursor"
                     text: Translation.tr("Hover to reveal")

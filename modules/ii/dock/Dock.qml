@@ -18,7 +18,11 @@ Scope {
 
     // "hug": the dock rests on the screen edge, with concave fillets tying it to
     // the sides, instead of floating above the edge with a gap under it.
-    readonly property bool isHug: Config.options?.dock.style === "hug" 
+    readonly property bool isHug: Config.options?.dock.style === "hug"
+
+    // Which edge the dock lives on. Mostly useful to get it out of the bar's way
+    // when the bar itself sits at the bottom.
+    readonly property bool isTop: Config.options?.dock.position === "top" 
 
     Variants {
         model: Quickshell.screens
@@ -46,7 +50,7 @@ Scope {
                 ? implicitHeight - Appearance.sizes.elevationMargin
                 : 0
 
-            anchors { bottom: true; left: true; right: true }
+            anchors { top: root.isTop; bottom: !root.isTop; left: true; right: true }
             implicitWidth: dockBackground.implicitWidth
             WlrLayershell.namespace: "quickshell:dock"
             color: "transparent"
@@ -62,11 +66,13 @@ Scope {
                 height: parent.height
                 anchors {
                     top: parent.top
-                    topMargin: dockRoot.reveal
+                    // The hidden dock slides out through its own edge, so the sign
+                    // of the offset follows the position.
+                    topMargin: (dockRoot.reveal
                         ? 0
                         : Config.options?.dock.hoverToReveal
                             ? (dockRoot.implicitHeight - Config.options.dock.hoverRegionHeight)
-                            : (dockRoot.implicitHeight + 1)
+                            : (dockRoot.implicitHeight + 1)) * (root.isTop ? -1 : 1)
                     horizontalCenter: parent.horizontalCenter
                 }
                 implicitWidth: dockHoverRegion.implicitWidth + Appearance.sizes.elevationMargin * 2
@@ -102,9 +108,14 @@ Scope {
                             id: dockVisualBackground
                             property real margin: Appearance.sizes.elevationMargin
                             anchors.fill: parent
-                            anchors.topMargin:    Appearance.sizes.elevationMargin
-                            // "hug" sits on the screen edge instead of floating above it
-                            anchors.bottomMargin: root.isHug ? 0 : Appearance.sizes.hyprlandGapsOut
+                            // "hug" sits on the screen edge instead of floating above it;
+                            // the elevation margin stays on the side the shadow falls.
+                            anchors.topMargin:    root.isTop
+                                ? (root.isHug ? 0 : Appearance.sizes.hyprlandGapsOut)
+                                : Appearance.sizes.elevationMargin
+                            anchors.bottomMargin: root.isTop
+                                ? Appearance.sizes.elevationMargin
+                                : (root.isHug ? 0 : Appearance.sizes.hyprlandGapsOut)
                             color: Config.options.dock.showBackground
                                    ? Appearance.colors.colLayer0 : "transparent"
                             border.width: (Config.options.dock.showBackground && !root.isHug) ? 1 : 0
@@ -113,10 +124,10 @@ Scope {
 
                             // Square where it meets the edge, so the fillets below can
                             // carry the shape outwards without a seam.
-                            bottomLeftRadius:  root.isHug ? 0 : radius
-                            bottomRightRadius: root.isHug ? 0 : radius
-                            topLeftRadius:     root.isHug ? Appearance.rounding.screenRounding : radius
-                            topRightRadius:    root.isHug ? Appearance.rounding.screenRounding : radius
+                            bottomLeftRadius:  !root.isHug ? radius : root.isTop ? Appearance.rounding.screenRounding : 0
+                            bottomRightRadius: !root.isHug ? radius : root.isTop ? Appearance.rounding.screenRounding : 0
+                            topLeftRadius:     !root.isHug ? radius : root.isTop ? 0 : Appearance.rounding.screenRounding
+                            topRightRadius:    !root.isHug ? radius : root.isTop ? 0 : Appearance.rounding.screenRounding
 
                             Behavior on anchors.bottomMargin {
                                 animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
@@ -127,19 +138,21 @@ Scope {
                         // same pieces the bar uses for its own hug styles.
                         RoundCorner {
                             visible: root.isHug && Config.options.dock.showBackground
-                            anchors.bottom: dockVisualBackground.bottom
+                            anchors.top:    root.isTop ? dockVisualBackground.top : undefined
+                            anchors.bottom: root.isTop ? undefined : dockVisualBackground.bottom
                             x: -implicitSize
                             implicitSize: Appearance.rounding.screenRounding
                             color: Appearance.colors.colLayer0
-                            corner: RoundCorner.CornerEnum.BottomRight
+                            corner: root.isTop ? RoundCorner.CornerEnum.TopRight : RoundCorner.CornerEnum.BottomRight
                         }
                         RoundCorner {
                             visible: root.isHug && Config.options.dock.showBackground
-                            anchors.bottom: dockVisualBackground.bottom
+                            anchors.top:    root.isTop ? dockVisualBackground.top : undefined
+                            anchors.bottom: root.isTop ? undefined : dockVisualBackground.bottom
                             x: dockVisualBackground.width
                             implicitSize: Appearance.rounding.screenRounding
                             color: Appearance.colors.colLayer0
-                            corner: RoundCorner.CornerEnum.BottomLeft
+                            corner: root.isTop ? RoundCorner.CornerEnum.TopLeft : RoundCorner.CornerEnum.BottomLeft
                         }
 
                         RowLayout {
