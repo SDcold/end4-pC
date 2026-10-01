@@ -607,6 +607,7 @@ Singleton {
 
             property JsonObject dock: JsonObject {
                 property bool enable: false
+                property string style: "classic" // "classic": floats above the edge | "hug": rests on it
                 property bool showBackground: true
                 property bool showPinButton: true
                 property bool showAppsButton: true
