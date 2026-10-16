@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
 import qs
 import qs.services
@@ -141,12 +142,75 @@ AbstractBackgroundWidget {
     // Nothing to show: still findable under the pointer, to move or resize it
     Text {
         anchors.centerIn: parent
-        visible: !root.showing && root.containsMouse
-        text: "♪  " + Translation.tr("Lyrics")
+        visible: !root.showing && root.toolsShown
+        text: "♪"
         color: root.textColor
         opacity: 0.5
         font.family: root.fontFamily
-        font.pixelSize: root.sideFontSize
+        font.pixelSize: root.fontSize
+    }
+
+    readonly property string statusText: {
+        if (!LyricsService.activePlayer) return Translation.tr("Nothing playing");
+        switch (LyricsService.status) {
+            case "loading": return Translation.tr("Searching for lyrics…");
+            case "not_found": return Translation.tr("No synced lyrics found");
+            case "error": return Translation.tr("Lyrics server busy, retrying");
+            case "no_info": return Translation.tr("No track info");
+        }
+        const track = LyricsService.activePlayer.trackTitle ?? "";
+        const artist = LyricsService.activePlayer.trackArtist ?? "";
+        return artist ? `${artist} · ${track}` : track;
+    }
+
+    // Shown on hover, and kept a moment so the pointer can reach it below the box
+    property bool toolsShown: false
+    readonly property bool pointerNear: root.containsMouse || toolsHover.hovered
+    onPointerNearChanged: {
+        if (root.pointerNear) {
+            hideTools.stop();
+            root.toolsShown = true;
+        } else {
+            hideTools.restart();
+        }
+    }
+    Timer {
+        id: hideTools
+        interval: 500
+        onTriggered: root.toolsShown = false
+    }
+
+    Toolbar {
+        anchors {
+            top: parent.bottom
+            topMargin: 8
+            horizontalCenter: parent.horizontalCenter
+        }
+        visible: opacity > 0
+        opacity: root.toolsShown ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+        }
+
+        HoverHandler { id: toolsHover }
+
+        StyledText {
+            Layout.leftMargin: 12
+            Layout.rightMargin: 4
+            Layout.maximumWidth: 360
+            elide: Text.ElideRight
+            text: root.statusText
+            font.pixelSize: Appearance.font.pixelSize.smaller
+            color: Appearance.colors.colSubtext
+        }
+        IconToolbarButton {
+            text: "refresh"
+            enabled: LyricsService.activePlayer !== null && LyricsService.status !== "loading"
+            onClicked: LyricsService.restartLyrics()
+            StyledToolTip {
+                text: Translation.tr("Search the lyrics again")
+            }
+        }
     }
 
     ResizeHandler {
