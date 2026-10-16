@@ -139,10 +139,13 @@ AbstractBackgroundWidget {
         }
     }
 
-    // Nothing to show: still findable under the pointer, to move or resize it
+    // Widgets unlocked (right-click a widget): the desktop is being arranged
+    readonly property bool editing: !Config.options.background.widgetsLocked
+
+    // Nothing to show: still findable while arranging, to move or resize it
     Text {
         anchors.centerIn: parent
-        visible: !root.showing && root.toolsShown
+        visible: !root.showing && root.editing
         text: "♪"
         color: root.textColor
         opacity: 0.5
@@ -163,9 +166,9 @@ AbstractBackgroundWidget {
         return artist ? `${artist} · ${track}` : track;
     }
 
-    // Shown on hover, and kept a moment so the pointer can reach it below the box
+    // Only while arranging, on hover, and kept a moment so the pointer can reach it below the box
     property bool toolsShown: false
-    readonly property bool pointerNear: root.containsMouse || toolsHover.hovered
+    readonly property bool pointerNear: root.editing && (root.containsMouse || toolsHover.hovered)
     onPointerNearChanged: {
         if (root.pointerNear) {
             hideTools.stop();
