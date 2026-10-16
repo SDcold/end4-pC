@@ -19,7 +19,12 @@ Singleton {
     property string currentLayoutCode: ""
     // For the service
     property var baseLayoutFilePath: "/usr/share/X11/xkb/rules/base.lst"
-    property bool needsLayoutRefresh: false
+
+    // "next" or "prev", or a layout index
+    function switchLayout(direction) {
+        if (WM.compositor !== "hyprland" || root.layoutCodes.length <= 1) return;
+        Quickshell.execDetached(["hyprctl", "switchxkblayout", "all", String(direction)]);
+    }
 
     // Update the layout code according to the layout name (Hyprland gives the name not the code)
     onCurrentLayoutNameChanged: root.updateLayoutCode()
@@ -82,7 +87,7 @@ Singleton {
             onStreamFinished: {
                 const parsedOutput = JSON.parse(devicesCollector.text);
                 const hyprlandKeyboard = parsedOutput["keyboards"].find(kb => kb.main === true);
-                root.layoutCodes = hyprlandKeyboard["layout"].split(",");
+                root.layoutCodes = hyprlandKeyboard["layout"].split(",").map(code => code.trim());
                 root.currentLayoutName = hyprlandKeyboard["active_keymap"];
             }
         }
@@ -94,11 +99,6 @@ Singleton {
         enabled: WM.compositor === "hyprland"
         function onRawEvent(event) {
             if (event.name === "activelayout") {
-                if (root.needsLayoutRefresh) {
-                    root.needsLayoutRefresh = false;
-                    fetchLayoutsProc.running = true;
-                }
-
                 if (root.layoutCodes.length <= 1) return;
 
                 const dataString = event.data;
@@ -106,7 +106,9 @@ Singleton {
 
                 Config.options.osk.layout = root.currentLayoutName.split(" (")[0];
             } else if (event.name == "configreloaded") {
-                root.needsLayoutRefresh = true;
+                // A layout list edited in the settings arrives with a reload,
+                // and no activelayout event may follow it
+                fetchLayoutsProc.running = true;
             }
         }
     }
