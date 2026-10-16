@@ -160,9 +160,9 @@ RippleButton {
                 source: SystemAppearance.iconPath(root.iconName, "image-missing")
                 width: 35
                 height: 35
-                // Decoded off the main thread: a page of uncached icons blocked
-                // typing for hundreds of ms, long enough for keys to auto-repeat
-                asynchronous: true
+                // Icon files decode off the main thread. Not theme icons: the
+                // image://icon provider gives the missing icon when run async.
+                asynchronous: !String(source).startsWith("image://")
             }
         }
 
@@ -389,7 +389,7 @@ RippleButton {
                             sourceComponent: IconImage {
                                 source: SystemAppearance.iconPath(actionButton.iconName)
                                 implicitSize: 20
-                                asynchronous: true
+                                asynchronous: !String(source).startsWith("image://")
                             }
                         }
                     }
