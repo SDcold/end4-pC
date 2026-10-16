@@ -34,6 +34,14 @@ def _is_match(d: dict, title: str, artist: str) -> bool:
                     any(word in r_artist for word in a.split() if len(word) > 3))
     return title_match and artist_match
 
+def _usable_lines(d: dict, title: str, artist: str) -> list:
+    if not _is_match(d, title, artist):
+        return []
+    lines = _parse_lrc(d["syncedLyrics"])
+    # lrclib also holds junk entries ("[00:00.00]probe"), even as the exact
+    # match: a song has more than a line or two, so try the next result
+    return lines if sum(1 for line in lines if line["text"]) >= 3 else []
+
 def fetch_lrclib(title: str, artist: str, duration: float) -> list:
     urls = [
         f"https://lrclib.net/api/get?track_name={urllib.parse.quote(title)}&artist_name={urllib.parse.quote(artist)}&duration={int(duration)}",
@@ -44,10 +52,8 @@ def fetch_lrclib(title: str, artist: str, duration: float) -> list:
         try:
             with urllib.request.urlopen(url, timeout=15) as r:
                 data = json.loads(r.read().decode())
-            if isinstance(data, list):
-                data = next((d for d in data if _is_match(d, title, artist)), None)
-            if data and _is_match(data, title, artist):
-                lines = _parse_lrc(data["syncedLyrics"])
+            for d in (data if isinstance(data, list) else [data]):
+                lines = _usable_lines(d, title, artist)
                 if lines:
                     return lines
         except Exception:
