@@ -10,6 +10,8 @@ Item {
     id: root
 
     property color colText: Appearance.colors.colOnSurface
+    // The desktop widget, for the bento tiles' glass
+    property Item widget: null
     readonly property string variant: Config.options.background.widgets.clock.daily.variant
     readonly property date now: DateTime.clock.date
     readonly property string greeting: {
@@ -370,6 +372,7 @@ Item {
 
                 // Time and date
                 BentoTile {
+                    widget: root.widget
                     Layout.preferredWidth: bentoRoot.third * 2 + bentoRoot.gap
                     implicitHeight: 156
                     color: Appearance.colors.colPrimaryContainer
@@ -410,6 +413,7 @@ Item {
 
                 // Weather now
                 BentoTile {
+                    widget: root.widget
                     visible: bentoRoot.hasWeather
                     Layout.preferredWidth: bentoRoot.third
                     implicitHeight: 156
@@ -458,12 +462,14 @@ Item {
                 Layout.fillWidth: true
                 spacing: bentoRoot.gap
                 BentoStatTile {
+                    widget: root.widget
                     Layout.preferredWidth: bentoRoot.third
                     icon: "water_drop"
                     value: Weather.data?.humidity ?? ""
                     label: Translation.tr("Humidity")
                 }
                 BentoStatTile {
+                    widget: root.widget
                     Layout.preferredWidth: bentoRoot.third
                     icon: "air"
                     // "3.14 m/s" does not fit a third of the widget
@@ -471,6 +477,7 @@ Item {
                     label: Translation.tr("Wind")
                 }
                 BentoStatTile {
+                    widget: root.widget
                     Layout.preferredWidth: bentoRoot.third
                     icon: "thermostat"
                     value: Weather.data?.tempFeelsLike ?? ""
@@ -480,6 +487,7 @@ Item {
 
             // The day in steps
             BentoDayTile {
+                widget: root.widget
                 visible: bentoRoot.hasSun
                 sunrise: bentoRoot.sunrise ?? new Date()
                 sunset: bentoRoot.sunset ?? new Date()
@@ -488,6 +496,7 @@ Item {
 
             // The next thing to do
             BentoStatTile {
+                widget: root.widget
                 visible: bentoRoot.pendingTodos.length > 0
                 icon: "checklist"
                 value: bentoRoot.pendingTodos[0]?.content ?? ""
@@ -500,6 +509,7 @@ Item {
 
             // Now playing
             BentoMediaTile {
+                widget: root.widget
                 visible: bentoRoot.hasMedia
                 player: bentoRoot.player
             }
