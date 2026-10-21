@@ -27,6 +27,21 @@ Item {
     readonly property string batteryLine: Battery.available ? Translation.tr("Battery %1% left").arg(Math.round(Battery.percentage * 100)) : ""
     readonly property string weatherIcon: Icons.getWeatherIcon(Weather.data.wCode) ?? "cloud"
 
+    readonly property real bentoWidth: 400
+    readonly property real bentoGap: 8
+    readonly property real bentoThird: (root.bentoWidth - root.bentoGap * 2) / 3
+
+    // Weather formats sunrise and sunset in the system locale ("06:42" or "6:42 AM"); today's Date, or null
+    function todayAt(timeText) {
+        const m = /(\d{1,2}):(\d{2})(?::\d{2})?\s*([AP]M)?/i.exec(timeText ?? "");
+        if (!m) return null;
+        let hours = Number(m[1]);
+        if (m[3]) hours = hours % 12 + (m[3].toUpperCase() === "PM" ? 12 : 0);
+        const d = new Date(root.now);
+        d.setHours(hours, Number(m[2]), 0, 0);
+        return d;
+    }
+
     implicitWidth: loader.item?.implicitWidth ?? 0
     implicitHeight: loader.item?.implicitHeight ?? 0
 
@@ -37,6 +52,7 @@ Item {
             case "morning": return morning;
             case "script": return script;
             case "bold": return bold;
+            case "bento": return bento;
             default: return badge;
             }
         }
@@ -74,6 +90,7 @@ Item {
         }
     }
 
+    // Bento tiles
     component Rule: Rectangle {
         implicitWidth: 90
         implicitHeight: 2
@@ -325,6 +342,166 @@ Item {
                         color: Appearance.colors.colOnPrimary
                     }
                 }
+            }
+        }
+    }
+
+    // Material You tiles, in the spirit of the Pixel home screen widgets
+    Component {
+        id: bento
+        ColumnLayout {
+            id: bentoRoot
+            readonly property real gap: root.bentoGap
+            readonly property real third: root.bentoThird
+            readonly property bool hasWeather: (Weather.data?.temp ?? "") !== ""
+            readonly property var sunrise: root.todayAt(Weather.data?.sunrise)
+            readonly property var sunset: root.todayAt(Weather.data?.sunset)
+            readonly property bool hasSun: bentoRoot.sunrise !== null && bentoRoot.sunset !== null
+            readonly property var pendingTodos: Todo.list.filter(item => !item.done)
+            readonly property var player: MprisController.activePlayer
+            readonly property bool hasMedia: (bentoRoot.player?.trackTitle ?? "") !== ""
+
+            implicitWidth: root.bentoWidth
+            spacing: bentoRoot.gap
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: bentoRoot.gap
+
+                // Time and date
+                BentoTile {
+                    Layout.preferredWidth: bentoRoot.third * 2 + bentoRoot.gap
+                    implicitHeight: 156
+                    color: Appearance.colors.colPrimaryContainer
+                    ColumnLayout {
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            verticalCenter: parent.verticalCenter
+                            margins: 18
+                        }
+                        spacing: 0
+                        StyledText {
+                            text: root.greeting
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.8
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+                        StyledText {
+                            text: DateTime.time
+                            color: Appearance.colors.colOnPrimaryContainer
+                            font {
+                                pixelSize: 58
+                                weight: 600
+                            }
+                        }
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: Qt.locale().toString(root.now, "dddd d MMMM")
+                            elide: Text.ElideRight
+                            color: Appearance.colors.colOnPrimaryContainer
+                            font {
+                                pixelSize: Appearance.font.pixelSize.normal
+                                weight: 500
+                            }
+                        }
+                    }
+                }
+
+                // Weather now
+                BentoTile {
+                    visible: bentoRoot.hasWeather
+                    Layout.preferredWidth: bentoRoot.third
+                    implicitHeight: 156
+                    color: Appearance.colors.colTertiaryContainer
+                    ColumnLayout {
+                        anchors {
+                            fill: parent
+                            margins: 14
+                        }
+                        spacing: 2
+                        MaterialShapeWrappedMaterialSymbol {
+                            shape: MaterialShape.Shape.Cookie12Sided
+                            color: Appearance.colors.colTertiary
+                            colSymbol: Appearance.colors.colOnTertiary
+                            text: root.weatherIcon
+                            fill: 1
+                            iconSize: 26
+                            padding: 10
+                            implicitWidth: 48
+                            implicitHeight: 48
+                        }
+                        Item { Layout.fillHeight: true }
+                        StyledText {
+                            text: Weather.data?.temp ?? ""
+                            color: Appearance.colors.colOnTertiaryContainer
+                            font {
+                                pixelSize: 34
+                                weight: 600
+                            }
+                        }
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: Weather.data?.description ?? ""
+                            elide: Text.ElideRight
+                            color: Appearance.colors.colOnTertiaryContainer
+                            opacity: 0.8
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                        }
+                    }
+                }
+            }
+
+            // Weather details
+            RowLayout {
+                visible: bentoRoot.hasWeather
+                Layout.fillWidth: true
+                spacing: bentoRoot.gap
+                BentoStatTile {
+                    Layout.preferredWidth: bentoRoot.third
+                    icon: "water_drop"
+                    value: Weather.data?.humidity ?? ""
+                    label: Translation.tr("Humidity")
+                }
+                BentoStatTile {
+                    Layout.preferredWidth: bentoRoot.third
+                    icon: "air"
+                    // "3.14 m/s" does not fit a third of the widget
+                    value: (Weather.data?.wind ?? "").replace(/^(\d+\.\d)\d+/, "$1")
+                    label: Translation.tr("Wind")
+                }
+                BentoStatTile {
+                    Layout.preferredWidth: bentoRoot.third
+                    icon: "thermostat"
+                    value: Weather.data?.tempFeelsLike ?? ""
+                    label: Translation.tr("Feels like")
+                }
+            }
+
+            // The day in steps
+            BentoDayTile {
+                visible: bentoRoot.hasSun
+                sunrise: bentoRoot.sunrise ?? new Date()
+                sunset: bentoRoot.sunset ?? new Date()
+                now: root.now
+            }
+
+            // The next thing to do
+            BentoStatTile {
+                visible: bentoRoot.pendingTodos.length > 0
+                icon: "checklist"
+                value: bentoRoot.pendingTodos[0]?.content ?? ""
+                label: bentoRoot.pendingTodos.length > 1
+                    ? Translation.tr("%1 more to do").arg(bentoRoot.pendingTodos.length - 1)
+                    : Translation.tr("To do")
+                colAccent: Appearance.colors.colPrimaryContainer
+                colOnAccent: Appearance.colors.colOnPrimaryContainer
+            }
+
+            // Now playing
+            BentoMediaTile {
+                visible: bentoRoot.hasMedia
+                player: bentoRoot.player
             }
         }
     }
