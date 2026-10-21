@@ -53,7 +53,8 @@ ProgressBar {
                 color: root.highlightColor
                 amplitudeMultiplier: root.wavy ? 0.5 : 0
                 height: contentItem.height * 6
-                width: contentItem.width * root.visualPosition
+                width: contentItem.width
+                drawLength: contentItem.width * root.visualPosition
                 lineWidth: contentItem.height
                 fullLength: root.width
                 Connections {

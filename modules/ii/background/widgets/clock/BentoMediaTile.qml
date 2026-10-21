@@ -120,6 +120,7 @@ BentoTile {
                 Layout.fillWidth: true
                 value: root.hasProgress ? Math.min(1, root.position / root.player.length) : 0
                 animateValue: false
+                valueBarHeight: 6
                 // Waves while playing, flat when paused
                 wavy: root.playing
                 animateWave: root.playing && root.visible
