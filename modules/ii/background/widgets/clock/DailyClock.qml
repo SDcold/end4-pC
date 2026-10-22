@@ -390,13 +390,18 @@ Item {
                             opacity: 0.8
                             font.pixelSize: Appearance.font.pixelSize.small
                         }
-                        StyledText {
-                            text: DateTime.time
-                            color: Appearance.colors.colOnPrimaryContainer
-                            font {
-                                pixelSize: 58
-                                weight: 600
-                            }
+                        // The pixel clock's overlapping digits, at the tile's size
+                        PixelClock {
+                            Layout.topMargin: 2
+                            Layout.bottomMargin: 4
+                            Layout.leftMargin: -6
+                            implicitWidth: 230
+                            implicitHeight: 82
+                            isVertical: false
+                            wallpaperItem: root.widget?.wallpaperItem ?? null
+                            blurWidgets: false
+                            tintSoft: Appearance.colors.colOnPrimaryContainer
+                            tintBold: Appearance.colors.colTertiary
                         }
                         StyledText {
                             Layout.fillWidth: true
