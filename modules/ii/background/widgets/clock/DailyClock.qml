@@ -416,7 +416,7 @@ Item {
                     }
                 }
 
-                // Weather now
+                // Weather now: the condition, a big temperature and where
                 BentoTile {
                     widget: root.widget
                     visible: bentoRoot.hasWeather
@@ -428,65 +428,111 @@ Item {
                             fill: parent
                             margins: 14
                         }
-                        spacing: 2
-                        MaterialShapeWrappedMaterialSymbol {
-                            shape: MaterialShape.Shape.Cookie12Sided
-                            color: Appearance.colors.colTertiary
-                            colSymbol: Appearance.colors.colOnTertiary
-                            text: root.weatherIcon
-                            fill: 1
-                            iconSize: 26
-                            padding: 10
-                            implicitWidth: 48
-                            implicitHeight: 48
+                        spacing: 0
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            MaterialShapeWrappedMaterialSymbol {
+                                Layout.alignment: Qt.AlignTop
+                                shape: MaterialShape.Shape.Cookie12Sided
+                                color: Appearance.colors.colTertiary
+                                colSymbol: Appearance.colors.colOnTertiary
+                                text: root.weatherIcon
+                                fill: 1
+                                iconSize: 26
+                                padding: 10
+                                implicitWidth: 48
+                                implicitHeight: 48
+                            }
+                            StyledText {
+                                Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignTop
+                                horizontalAlignment: Text.AlignRight
+                                text: Weather.data?.city ?? ""
+                                elide: Text.ElideRight
+                                color: Appearance.colors.colOnTertiaryContainer
+                                opacity: 0.7
+                                font.pixelSize: Appearance.font.pixelSize.smallest
+                            }
                         }
                         Item { Layout.fillHeight: true }
                         StyledText {
-                            text: Weather.data?.temp ?? ""
+                            // "25°C" reads bigger as "25°"
+                            text: (Weather.data?.temp ?? "").replace(/°[CF]$/, "°")
                             color: Appearance.colors.colOnTertiaryContainer
                             font {
-                                pixelSize: 34
-                                weight: 600
+                                family: "Google Sans Flex"
+                                pixelSize: 46
+                                weight: 900
+                                variableAxes: ({ "wght": 900 })
                             }
                         }
                         StyledText {
                             Layout.fillWidth: true
-                            text: Weather.data?.description ?? ""
+                            text: {
+                                const d = Weather.data?.description ?? "";
+                                return d.charAt(0).toUpperCase() + d.slice(1);
+                            }
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 2
                             elide: Text.ElideRight
+                            lineHeight: 0.9
                             color: Appearance.colors.colOnTertiaryContainer
                             opacity: 0.8
-                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            font.pixelSize: Appearance.font.pixelSize.smallest
                         }
                     }
                 }
             }
 
-            // Weather details
+            // Weather details, each with its own picture of the value
             RowLayout {
+                id: details
                 visible: bentoRoot.hasWeather
                 Layout.fillWidth: true
                 spacing: bentoRoot.gap
+
+                readonly property real temp: parseFloat(Weather.data?.temp ?? "")
+                readonly property real feels: parseFloat(Weather.data?.tempFeelsLike ?? "")
+                readonly property real feelsDelta: isNaN(temp) || isNaN(feels) ? 0 : feels - temp
+                function compass(degrees) {
+                    const points = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+                    return points[Math.round(((degrees % 360) + 360) % 360 / 45) % 8];
+                }
+
                 BentoStatTile {
                     widget: root.widget
                     Layout.preferredWidth: bentoRoot.third
                     icon: "water_drop"
                     value: Weather.data?.humidity ?? ""
                     label: Translation.tr("Humidity")
+                    gauge: (parseFloat(Weather.data?.humidity ?? "") || 0) / 100
                 }
                 BentoStatTile {
                     widget: root.widget
                     Layout.preferredWidth: bentoRoot.third
-                    icon: "air"
+                    readonly property bool calm: (parseFloat(Weather.data?.wind ?? "") || 0) === 0
+                    // The arrow points where the wind blows to; no wind, no direction
+                    icon: calm ? "air" : "navigation"
+                    iconRotation: calm ? 0 : ((Weather.data?.windDir ?? 0) + 180) % 360
                     // "3.14 m/s" does not fit a third of the widget
                     value: (Weather.data?.wind ?? "").replace(/^(\d+\.\d)\d+/, "$1")
-                    label: Translation.tr("Wind")
+                    label: calm ? Translation.tr("Calm") : `${Translation.tr("Wind")} · ${details.compass(Weather.data?.windDir ?? 0)}`
                 }
                 BentoStatTile {
                     widget: root.widget
                     Layout.preferredWidth: bentoRoot.third
                     icon: "thermostat"
                     value: Weather.data?.tempFeelsLike ?? ""
-                    label: Translation.tr("Feels like")
+                    label: details.feelsDelta >= 2 ? Translation.tr("Feels warmer")
+                        : details.feelsDelta <= -2 ? Translation.tr("Feels colder")
+                        : Translation.tr("Feels like")
+                    colAccent: details.feelsDelta >= 2 ? Appearance.colors.colTertiaryContainer
+                        : details.feelsDelta <= -2 ? Appearance.colors.colPrimaryContainer
+                        : Appearance.colors.colSecondaryContainer
+                    colOnAccent: details.feelsDelta >= 2 ? Appearance.colors.colOnTertiaryContainer
+                        : details.feelsDelta <= -2 ? Appearance.colors.colOnPrimaryContainer
+                        : Appearance.colors.colOnSecondaryContainer
                 }
             }
 

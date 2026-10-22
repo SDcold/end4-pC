@@ -1,11 +1,14 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
+import Quickshell.Io
 import Quickshell.Services.Mpris
+import Quickshell.Widgets
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 
-// The playing track, its progress and a play/pause button
+// The playing track with its cover, its progress and the playback buttons
 BentoTile {
     id: root
     required property MprisPlayer player
@@ -27,6 +30,45 @@ BentoTile {
         target: root.player
         function onPostTrackChanged() { root.readPosition(); }
         function onPositionChanged() { if (!root.playing) root.readPosition(); }
+    }
+
+    // Cover art, cached like the media widget does: a remote cover is downloaded once
+    readonly property string artUrl: root.player?.trackArtUrl ?? ""
+    readonly property string artFilePath: `${Directories.coverArt}/${Qt.md5(root.artUrl)}`
+    property bool coverDownloaded: false
+    readonly property string coverUrl: {
+        if (root.artUrl.length === 0) return "";
+        if (root.artUrl.startsWith("file://")) return root.artUrl;
+        return root.coverDownloaded ? Qt.resolvedUrl(root.artFilePath) : "";
+    }
+    onArtFilePathChanged: {
+        root.coverDownloaded = false;
+        if (root.artUrl.length === 0 || root.artUrl.startsWith("file://")) return;
+        coverDownloader.command = ["bash", "-c", '[ -f "$1" ] || curl -sSL "$2" -o "$1"', "_", root.artFilePath, root.artUrl];
+        coverDownloader.running = true;
+    }
+    Process {
+        id: coverDownloader
+        onExited: root.coverDownloaded = true
+    }
+
+    component ControlButton: RippleButton {
+        id: control
+        property string icon
+        property real size: 32
+        implicitWidth: control.size
+        implicitHeight: control.size
+        buttonRadius: Appearance.rounding.full
+        colBackground: "transparent"
+        colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+        colRipple: Appearance.colors.colSecondaryContainerActive
+        MaterialSymbol {
+            anchors.centerIn: parent
+            text: control.icon
+            fill: 1
+            iconSize: control.size * 0.6
+            color: Appearance.colors.colOnSecondaryContainer
+        }
     }
 
     function formatTime(seconds) {
@@ -51,16 +93,34 @@ BentoTile {
         RowLayout {
             Layout.fillWidth: true
             spacing: 10
-            MaterialShapeWrappedMaterialSymbol {
-                shape: MaterialShape.Shape.Cookie9Sided
-                color: Appearance.colors.colSecondary
-                colSymbol: Appearance.colors.colOnSecondary
-                text: "music_note"
-                fill: 1
-                iconSize: 18
-                padding: 8
-                implicitWidth: 38
-                implicitHeight: 38
+            Item {
+                implicitWidth: 48
+                implicitHeight: 48
+                MaterialShapeWrappedMaterialSymbol {
+                    anchors.fill: parent
+                    visible: cover.status !== Image.Ready
+                    shape: MaterialShape.Shape.Cookie9Sided
+                    color: Appearance.colors.colSecondary
+                    colSymbol: Appearance.colors.colOnSecondary
+                    text: "music_note"
+                    fill: 1
+                    iconSize: 22
+                    padding: 10
+                }
+                ClippingRectangle {
+                    anchors.fill: parent
+                    visible: cover.status === Image.Ready
+                    radius: Appearance.rounding.normal
+                    color: "transparent"
+                    StyledImage {
+                        id: cover
+                        anchors.fill: parent
+                        source: root.coverUrl
+                        fillMode: Image.PreserveAspectCrop
+                        sourceSize: Qt.size(96, 96)
+                        asynchronous: true
+                    }
+                }
             }
             ColumnLayout {
                 Layout.fillWidth: true
@@ -71,8 +131,10 @@ BentoTile {
                     elide: Text.ElideRight
                     color: Appearance.colors.colOnSecondaryContainer
                     font {
+                        family: "Google Sans Flex"
                         pixelSize: Appearance.font.pixelSize.normal
-                        weight: 600
+                        weight: 800
+                        variableAxes: ({ "wght": 800 })
                     }
                 }
                 StyledText {
@@ -84,6 +146,11 @@ BentoTile {
                     opacity: 0.8
                     font.pixelSize: Appearance.font.pixelSize.smaller
                 }
+            }
+            ControlButton {
+                visible: root.player?.canGoPrevious ?? false
+                icon: "skip_previous"
+                onClicked: MprisController.previous()
             }
             RippleButton {
                 implicitWidth: 40
@@ -100,6 +167,11 @@ BentoTile {
                     iconSize: 22
                     color: Appearance.colors.colOnSecondary
                 }
+            }
+            ControlButton {
+                visible: root.player?.canGoNext ?? false
+                icon: "skip_next"
+                onClicked: MprisController.next()
             }
         }
 

@@ -3,10 +3,12 @@ import QtQuick.Layouts
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 
 /*
- * The day in four steps, sunrise, midday, sunset and night,
- * joined by a track that fills as the day goes.
+ * The day in four steps, sunrise, midday, sunset and night, joined by a track
+ * that fills as the day goes. The tile takes the color of the time of day, and
+ * a ring around the current step shows how far into it we are.
  */
 BentoTile {
     id: root
@@ -48,11 +50,25 @@ BentoTile {
         { icon: "bedtime", label: Translation.tr("Night"), reached: root.night, current: root.night }
     ]
     // How full each track between two steps is
+    readonly property var previousSunset: root.afterSunset ? root.sunset : new Date(root.sunset.getTime() - 24 * 3600 * 1000)
+    // How far into the current step
+    readonly property real stageProgress: root.night ? root.fraction(root.previousSunset, root.nextSunrise)
+        : root.now < root.midday ? root.tracks[0] : root.tracks[1]
     readonly property var tracks: [
         root.beforeSunrise ? 0 : root.fraction(root.sunrise, root.midday),
         root.beforeSunrise ? 0 : root.fraction(root.midday, root.sunset),
         root.afterSunset ? 1 : 0
     ]
+
+    // Morning, afternoon and night each have their color
+    readonly property color colStage: root.night ? Appearance.colors.colSurfaceContainer
+        : root.now < root.midday ? Appearance.colors.colSecondaryContainer : Appearance.colors.colTertiaryContainer
+    readonly property color colOnStage: root.night ? Appearance.colors.colOnSurface
+        : root.now < root.midday ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnTertiaryContainer
+    color: root.colStage
+    Behavior on color {
+        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+    }
 
     implicitHeight: content.implicitHeight + 24
 
@@ -65,23 +81,36 @@ BentoTile {
             leftMargin: 16
             rightMargin: 16
         }
-        spacing: 10
+        spacing: 8
 
         RowLayout {
             Layout.fillWidth: true
             StyledText {
                 Layout.fillWidth: true
                 text: root.stageName
-                color: Appearance.colors.colOnSurface
+                color: root.colOnStage
                 font {
-                    pixelSize: Appearance.font.pixelSize.normal
-                    weight: 600
+                    family: "Google Sans Flex"
+                    pixelSize: Appearance.font.pixelSize.huge
+                    weight: 900
+                    variableAxes: ({ "wght": 900 })
                 }
             }
-            StyledText {
-                text: root.countdown
-                color: Appearance.colors.colOnSurfaceVariant
-                font.pixelSize: Appearance.font.pixelSize.smaller
+            Rectangle {
+                implicitWidth: countdownText.implicitWidth + 20
+                implicitHeight: countdownText.implicitHeight + 8
+                radius: height / 2
+                color: Appearance.colors.colPrimary
+                StyledText {
+                    id: countdownText
+                    anchors.centerIn: parent
+                    text: root.countdown
+                    color: Appearance.colors.colOnPrimary
+                    font {
+                        pixelSize: Appearance.font.pixelSize.smaller
+                        weight: 600
+                    }
+                }
             }
         }
 
@@ -97,33 +126,49 @@ BentoTile {
                     readonly property bool isStep: index % 2 === 0
                     Layout.fillWidth: !isStep
                     Layout.alignment: Qt.AlignTop
-                    Layout.topMargin: isStep ? 0 : 16
+                    Layout.topMargin: isStep ? 0 : 20
                     sourceComponent: isStep ? stepComponent : trackComponent
 
                     Component {
                         id: stepComponent
                         ColumnLayout {
+                            id: stepItem
                             readonly property var step: root.steps[slot.index / 2]
-                            spacing: 4
-                            MaterialShapeWrappedMaterialSymbol {
+                            spacing: 2
+                            Item {
                                 Layout.alignment: Qt.AlignHCenter
-                                shape: parent.step.current ? MaterialShape.Shape.Cookie9Sided : MaterialShape.Shape.Circle
-                                color: parent.step.reached ? Appearance.colors.colPrimary : Appearance.colors.colSecondaryContainer
-                                colSymbol: parent.step.reached ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
-                                text: parent.step.icon
-                                fill: parent.step.reached ? 1 : 0
-                                iconSize: 18
-                                padding: 8
-                                implicitWidth: 36
-                                implicitHeight: 36
+                                implicitWidth: 44
+                                implicitHeight: 44
+                                CircularProgress {
+                                    anchors.centerIn: parent
+                                    visible: stepItem.step.current
+                                    implicitSize: 44
+                                    lineWidth: 3
+                                    value: root.stageProgress
+                                    colPrimary: Appearance.colors.colPrimary
+                                    colSecondary: ColorUtils.transparentize(root.colOnStage, 0.8)
+                                }
+                                MaterialShapeWrappedMaterialSymbol {
+                                    anchors.centerIn: parent
+                                    shape: stepItem.step.current ? MaterialShape.Shape.Cookie9Sided : MaterialShape.Shape.Circle
+                                    color: stepItem.step.reached ? Appearance.colors.colPrimary : ColorUtils.transparentize(root.colOnStage, 0.85)
+                                    colSymbol: stepItem.step.reached ? Appearance.colors.colOnPrimary : root.colOnStage
+                                    text: stepItem.step.icon
+                                    fill: stepItem.step.reached ? 1 : 0
+                                    iconSize: stepItem.step.current ? 18 : 16
+                                    padding: 7
+                                    implicitWidth: stepItem.step.current ? 34 : 30
+                                    implicitHeight: stepItem.step.current ? 34 : 30
+                                }
                             }
                             StyledText {
                                 Layout.alignment: Qt.AlignHCenter
-                                text: parent.step.label
-                                color: parent.step.current ? Appearance.colors.colOnSurface : Appearance.colors.colOnSurfaceVariant
+                                text: stepItem.step.label
+                                color: root.colOnStage
+                                opacity: stepItem.step.current ? 1 : 0.7
                                 font {
                                     pixelSize: Appearance.font.pixelSize.smallest
-                                    weight: parent.step.current ? 600 : 400
+                                    weight: stepItem.step.current ? 700 : 400
                                 }
                             }
                         }
@@ -135,7 +180,7 @@ BentoTile {
                             readonly property real progress: root.tracks[(slot.index - 1) / 2]
                             implicitHeight: 4
                             radius: height / 2
-                            color: Appearance.colors.colSecondaryContainer
+                            color: ColorUtils.transparentize(root.colOnStage, 0.8)
                             Rectangle {
                                 width: parent.width * parent.progress
                                 height: parent.height
