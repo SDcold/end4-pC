@@ -54,7 +54,7 @@ BentoTile {
 
     component ControlButton: RippleButton {
         id: control
-        property string icon
+        property string iconName
         property real size: 32
         implicitWidth: control.size
         implicitHeight: control.size
@@ -64,7 +64,7 @@ BentoTile {
         colRipple: Appearance.colors.colSecondaryContainerActive
         MaterialSymbol {
             anchors.centerIn: parent
-            text: control.icon
+            text: control.iconName
             fill: 1
             iconSize: control.size * 0.6
             color: Appearance.colors.colOnSecondaryContainer
@@ -149,7 +149,7 @@ BentoTile {
             }
             ControlButton {
                 visible: root.player?.canGoPrevious ?? false
-                icon: "skip_previous"
+                iconName: "skip_previous"
                 onClicked: MprisController.previous()
             }
             RippleButton {
@@ -170,7 +170,7 @@ BentoTile {
             }
             ControlButton {
                 visible: root.player?.canGoNext ?? false
-                icon: "skip_next"
+                iconName: "skip_next"
                 onClicked: MprisController.next()
             }
         }
