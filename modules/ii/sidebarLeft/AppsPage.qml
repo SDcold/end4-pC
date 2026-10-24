@@ -54,6 +54,7 @@ Item {
             ToolbarTextField {
                 id: searchField
                 Layout.fillWidth: true
+                Layout.fillHeight: false // ToolbarTextField fills the height of its toolbar by default
                 implicitHeight: 40
                 colBackground: Appearance.colors.colLayer2
                 placeholderText: Translation.tr("Search %1 apps").arg(AppSearch.list.length)
